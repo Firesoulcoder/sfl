@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Trading Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .table-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .total-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body class="bg-yellow-50 text-gray-800 font-sans">
+
+    <div class="max-w-7xl mx-auto p-6">
+        <h1 class="text-4xl font-extrabold text-center mb-8 text-yellow-600">P2P Trading Calculator</h1>
+        
+        <div class="table-container">
+            <!-- Left Table Container -->
+            <div class="flex-1">
+                <p class="text-lg font-medium mb-4 text-gray-700">Enter the quantity of resources to calculate the cost:</p>
+                <table class="min-w-full bg-white shadow-lg rounded-lg overflow-hidden">
+                    <thead class="bg-yellow-200 text-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left">Resource</th>
+                            <th class="px-6 py-3 text-left">Price</th>
+                            <th class="px-6 py-3 text-left">Quantity</th>
+                            <th class="px-6 py-3 text-left">Total Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody id="p2pTable">
+                        <!-- Data rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Right Total Cost Container -->
+            <div class="flex-none w-1/3">
+                <div class="bg-white p-6 shadow-lg rounded-lg flex flex-col items-center">
+                    <h2 class="text-xl font-semibold text-gray-700">Total Cost</h2>
+                    <div class="mt-4 text-2xl font-bold text-yellow-600" id="result">Total Cost: 0.0000</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Resource to Image URL mapping (Added all resources dynamically)
+        const resourceImages = [
+            "Sunflower", "Potato", "Pumpkin", "Carrot", "Cabbage", "Beetroot", "Cauliflower", "Parsnip", "Radish", "Wheat", 
+            "Kale", "Apple", "Blueberry", "Orange", "Eggplant", "Corn", "Banana", "Soybean", "Grape", "Rice", "Olive", 
+            "Tomato", "Lemon", "Barley", "Wood", "Stone", "Iron", "Gold", "Egg", "Honey", "Crimstone", "Leather", "Wool", 
+            "Merino Wool", "Feather", "Milk", "Goblin Emblem", "Bumpkin Emblem", "Sunflorian Emblem", "Nightshade Emblem"
+        ];
+
+        // Fallback image if no custom image URL is provided
+        const fallbackImage = "https://via.placeholder.com/20?text=No+Image";
+
+        // Fetch data from the API
+        fetch('https://sfl.world/api/v1/prices')
+            .then(response => response.json())  // Parse JSON response
+            .then(data => {
+                const p2pData = data.data.p2p;
+
+                // Function to populate the P2P table with input fields
+                function populateP2PTable(data) {
+                    const tableBody = document.getElementById('p2pTable');
+                    for (const [item, price] of Object.entries(data)) {
+                        const row = document.createElement('tr');
+                        row.classList.add("border-t", "border-gray-200");
+
+                        const itemCell = document.createElement('td');
+                        const priceCell = document.createElement('td');
+                        const quantityCell = document.createElement('td');
+                        const totalCell = document.createElement('td');
+
+                        itemCell.classList.add('px-6', 'py-4');
+                        priceCell.classList.add('px-6', 'py-4');
+                        quantityCell.classList.add('px-6', 'py-4');
+                        totalCell.classList.add('px-6', 'py-4');
+
+                        // Get image for the resource or fallback to placeholder if not available
+                        const img = document.createElement('img');
+                        const resourceImageURL = `https://sfl.world/img/source/${capitalizeFirstLetter(item)}.png`;
+                        img.src = resourceImages.includes(item) ? resourceImageURL : fallbackImage;  // Use dynamic image URL or fallback
+                        img.alt = `${item} Image`;
+                        img.classList.add('inline-block', 'mr-2', 'w-5', 'h-5', 'object-cover');
+
+                        const text = document.createElement('span');
+                        text.textContent = item;
+
+                        itemCell.appendChild(img);
+                        itemCell.appendChild(text);
+                        priceCell.textContent = price;
+
+                        // Create an input field for quantity
+                        const quantityInput = document.createElement('input');
+                        quantityInput.type = 'number';
+                        quantityInput.value = 0;
+                        quantityInput.min = 0;
+                        quantityInput.classList.add('border', 'rounded', 'p-2');
+                        quantityInput.addEventListener('input', () => updateTotal(item, price, quantityInput.value, totalCell));
+
+                        quantityCell.appendChild(quantityInput);
+                        totalCell.textContent = '0';  // Default total cost
+
+                        row.appendChild(itemCell);
+                        row.appendChild(priceCell);
+                        row.appendChild(quantityCell);
+                        row.appendChild(totalCell);
+
+                        tableBody.appendChild(row);
+                    }
+                }
+          
+                // Function to update the total cost for a given item
+                function updateTotal(item, price, quantity, totalCell) {
+                    const totalCost = (price * quantity).toFixed(6);  // Set the precision to 6 decimal places
+                    totalCell.textContent = totalCost;
+                    updateOverallTotal();  // Update overall total when a value changes
+                }
+
+                // Function to update the overall total cost
+                function updateOverallTotal() {
+                    let overallTotal = 0;
+                    const rows = document.getElementById('p2pTable').getElementsByTagName('tr');
+                    for (let row of rows) {
+                        const totalCost = parseFloat(row.cells[3].textContent) || 0;
+                        overallTotal += totalCost;
+                    }
+                    document.getElementById('result').textContent = 'Total Cost: ' + overallTotal.toFixed(6);
+                }
+
+                // Helper function to capitalize the first letter of a string
+                function capitalizeFirstLetter(str) {
+                    return str.charAt(0).toUpperCase() + str.slice(1);
+                }
+
+                // Populate the P2P table with data
+                populateP2PTable(p2pData);
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                document.body.innerHTML = '<p>Error loading data. Please try again later.</p>';
+            });
+    </script>
+</body>
+</html>
